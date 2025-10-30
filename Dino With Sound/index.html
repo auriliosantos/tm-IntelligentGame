@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Control Jump Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #controls {
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 70%, #90EE90 70%, #90EE90 100%);
+            border: 3px solid #333;
+            overflow: hidden;
+        }
+        
+        /* Clouds */
+        .cloud {
+            position: absolute;
+            background: white;
+            border-radius: 100px;
+            opacity: 0.8;
+        }
+        
+        #player {
+            position: absolute;
+            bottom: 50px;
+            left: 100px;
+            width: 50px;
+            height: 50px;
+            font-size: 40px;
+            transition: bottom 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #player.ducking {
+            transform: scaleY(0.5);
+        }
+        
+        .obstacle {
+            position: absolute;
+            bottom: 50px;
+            width: 40px;
+            height: 50px;
+            font-size: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .obstacle.low {
+            height: 50px;
+            bottom: 50px;
+        }
+        
+        .obstacle.high {
+            height: 80px;
+            bottom: 50px;
+            font-size: 50px;
+        }
+        
+        #score {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px 15px;
+            border-radius: 10px;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        #game-over h2 {
+            margin-top: 0;
+            font-size: 36px;
+        }
+        
+        #audio-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        #label-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 300px;
+        }
+        
+        #label-container div {
+            padding: 12px;
+            background: white;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .active-sound {
+            background: #4CAF50 !important;
+            color: white;
+            font-weight: bold;
+            transform: scale(1.05);
+            transition: all 0.2s;
+        }
+        
+        #status {
+            margin-top: 10px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #mic-indicator {
+            width: 20px;
+            height: 20px;
+            background: #ff4444;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Sun */
+        .sun {
+            position: absolute;
+            top: 30px;
+            right: 50px;
+            width: 60px;
+            height: 60px;
+            background: #FFD700;
+            border-radius: 50%;
+            box-shadow: 0 0 30px #FFD700;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            max-width: 600px;
+        }
+
+        .info-box h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-box">
+        <h3>🎤 Audio Control Instructions</h3>
+        <p><strong>Clap:</strong> Jump over obstacles</p>
+        <p><strong>Shush:</strong> Duck under tall obstacles</p>
+        <p><strong>Background Noise (Idle):</strong> Character stands normally</p>
+        <p>Make sure to allow microphone access when prompted!</p>
+    </div>
+
+    <div id="controls">
+        <button onclick="init()">🎤 Start Microphone & Game</button>
+        <button onclick="restartGame()">🔄 Restart Game</button>
+    </div>
+    
+    <div id="game-container">
+        <div class="sun"></div>
+        <div id="player">🦖</div>
+        <div id="score">Score: 0</div>
+        <div id="game-over">
+            <h2>💥 Game Over! 💥</h2>
+            <p id="final-score"></p>
+            <button onclick="restartGame()">🔄 Play Again</button>
+        </div>
+    </div>
+    
+    <div id="status">
+        <div id="mic-indicator"></div>
+        <span>Waiting to start...</span>
+    </div>
+    
+    <div id="audio-container">
+        <div id="label-container"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js"></script>
+    
+    <script>
+        // Get the base URL of the current page
+        const baseURL = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+        const URL = baseURL + "my_model/";
+        let recognizer;
+        let classLabels = [];
+        
+        // Game variables
+        let player = document.getElementById('player');
+        let gameContainer = document.getElementById('game-container');
+        let scoreDisplay = document.getElementById('score');
+        let gameOverScreen = document.getElementById('game-over');
+        let finalScoreDisplay = document.getElementById('final-score');
+        let statusDisplay = document.getElementById('status');
+        let labelContainer = document.getElementById("label-container");
+        
+        let score = 0;
+        let isJumping = false;
+        let isDucking = false;
+        let gameRunning = false;
+        let obstacles = [];
+        let obstacleSpeed = 5;
+        let obstacleInterval;
+        let gameLoopInterval;
+        
+        const PLAYER_BOTTOM = 50;
+        const JUMP_HEIGHT = 150;
+        const THRESHOLD = 0.75;
+        
+        // Fun emoji options
+        const obstacleEmojis = ['🌵', '🪨', '🌳', '🔥', '⚡', '🦴', '🍄', '💎'];
+        
+        // Current detected sound
+        let currentSound = 'Background Noise';
+
+        // Add clouds
+        function createClouds() {
+            for (let i = 0; i < 3; i++) {
+                let cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                cloud.style.width = (Math.random() * 60 + 40) + 'px';
+                cloud.style.height = (Math.random() * 30 + 20) + 'px';
+                cloud.style.left = (Math.random() * 700) + 'px';
+                cloud.style.top = (Math.random() * 150 + 20) + 'px';
+                gameContainer.appendChild(cloud);
+            }
+        }
+        
+        createClouds();
+
+        async function createModel() {
+            const checkpointURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+            
+            // Create recognizer with proper configuration
+            const recognizer = speechCommands.create(
+                "BROWSER_FFT",
+                undefined,
+                checkpointURL,
+                metadataURL);
+            
+            await recognizer.ensureModelLoaded();
+            return recognizer;
+        }
+
+        async function init() {
+            try {
+                statusDisplay.innerHTML = '<div id="mic-indicator"></div><span>🎤 Loading audio model...</span>';
+                
+                console.log('Model URL:', URL);
+                console.log('Full checkpoint URL:', URL + "model.json");
+                console.log('Full metadata URL:', URL + "metadata.json");
+                
+                recognizer = await createModel();
+                classLabels = recognizer.wordLabels();
+                
+                console.log('Model loaded successfully!');
+                console.log('Class labels:', classLabels);
+                
+                // Create label display
+                labelContainer.innerHTML = '';
+                for (let i = 0; i < classLabels.length; i++) {
+                    labelContainer.appendChild(document.createElement("div"));
+                }
+                
+                // Start listening
+                recognizer.listen(result => {
+                    const scores = result.scores;
+                    let maxProb = 0;
+                    let detectedSound = 'Background Noise';
+                    
+                    // Update display and find max probability
+                    for (let i = 0; i < classLabels.length; i++) {
+                        const classPrediction = classLabels[i] + ": " + scores[i].toFixed(2);
+                        labelContainer.childNodes[i].innerHTML = classPrediction;
+                        labelContainer.childNodes[i].classList.remove('active-sound');
+                        
+                        if (scores[i] > THRESHOLD && scores[i] > maxProb) {
+                            maxProb = scores[i];
+                            detectedSound = classLabels[i];
+                        }
+                    }
+                    
+                    // Update current sound and highlight active one
+                    if (maxProb > THRESHOLD) {
+                        currentSound = detectedSound;
+                        
+                        // Highlight the active sound
+                        for (let i = 0; i < classLabels.length; i++) {
+                            if (classLabels[i] === detectedSound) {
+                                labelContainer.childNodes[i].classList.add('active-sound');
+                            }
+                        }
+                        
+                        // Handle game controls
+                        if (gameRunning) {
+                            if (detectedSound === 'Up' && !isJumping) {
+                                jump();
+                            } else if (detectedSound === 'Down' && !isJumping) {
+                                duck();
+                            } else if (detectedSound === 'Background Noise') {
+                                standUp();
+                            }
+                        }
+                    } else {
+                        currentSound = 'Background Noise';
+                        if (gameRunning && !isJumping) {
+                            standUp();
+                        }
+                    }
+                    
+                    statusDisplay.innerHTML = `<div id="mic-indicator"></div><span>🎤 Listening... Current: ${currentSound}</span>`;
+                }, {
+                    includeSpectrogram: true,
+                    probabilityThreshold: 0.75,
+                    invokeCallbackOnNoiseAndUnknown: true,
+                    overlapFactor: 0.50
+                });
+                
+                statusDisplay.innerHTML = '<div id="mic-indicator"></div><span>🎤 Microphone active! Game starting...</span>';
+                startGame();
+            } catch (error) {
+                statusDisplay.innerHTML = '<span>❌ Error: ' + error.message + '</span>';
+                console.error('Detailed error:', error);
+                console.error('Error stack:', error.stack);
+            }
+        }
+        
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            scoreDisplay.textContent = '🏆 Score: 0';
+            gameOverScreen.style.display = 'none';
+            player.style.bottom = PLAYER_BOTTOM + 'px';
+            player.textContent = '🦖';
+            
+            // Clear any existing obstacles
+            obstacles.forEach(obs => obs.element.remove());
+            obstacles = [];
+            
+            // Start spawning obstacles
+            obstacleInterval = setInterval(createObstacle, 2000);
+            
+            // Start game loop
+            gameLoopInterval = setInterval(updateGame, 20);
+        }
+        
+        function restartGame() {
+            clearInterval(obstacleInterval);
+            clearInterval(gameLoopInterval);
+            obstacles.forEach(obs => obs.element.remove());
+            obstacles = [];
+            startGame();
+        }
+        
+        function jump() {
+            if (!isJumping && !isDucking) {
+                isJumping = true;
+                player.classList.remove('ducking');
+                let jumpUp = setInterval(() => {
+                    let currentBottom = parseInt(player.style.bottom);
+                    if (currentBottom >= PLAYER_BOTTOM + JUMP_HEIGHT) {
+                        clearInterval(jumpUp);
+                        let jumpDown = setInterval(() => {
+                            let currentBottom = parseInt(player.style.bottom);
+                            if (currentBottom <= PLAYER_BOTTOM) {
+                                player.style.bottom = PLAYER_BOTTOM + 'px';
+                                clearInterval(jumpDown);
+                                isJumping = false;
+                            } else {
+                                player.style.bottom = (currentBottom - 5) + 'px';
+                            }
+                        }, 20);
+                    } else {
+                        player.style.bottom = (currentBottom + 5) + 'px';
+                    }
+                }, 20);
+            }
+        }
+        
+        function duck() {
+            if (!isDucking) {
+                isDucking = true;
+                player.classList.add('ducking');
+            }
+        }
+        
+        function standUp() {
+            if (isDucking) {
+                isDucking = false;
+                player.classList.remove('ducking');
+            }
+        }
+        
+        function createObstacle() {
+            if (!gameRunning) return;
+            
+            let obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            
+            // Random emoji
+            obstacle.textContent = obstacleEmojis[Math.floor(Math.random() * obstacleEmojis.length)];
+            
+            // Randomly make some obstacles taller
+            if (Math.random() > 0.5) {
+                obstacle.classList.add('high');
+            } else {
+                obstacle.classList.add('low');
+            }
+            
+            obstacle.style.right = '-40px';
+            gameContainer.appendChild(obstacle);
+            
+            obstacles.push({
+                element: obstacle,
+                x: 800
+            });
+        }
+        
+        function updateGame() {
+            if (!gameRunning) return;
+            
+            // Update score
+            score++;
+            scoreDisplay.textContent = '🏆 Score: ' + Math.floor(score / 10);
+            
+            // Increase difficulty
+            if (score % 500 === 0) {
+                obstacleSpeed += 0.5;
+            }
+            
+            // Move obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.x -= obstacleSpeed;
+                obs.element.style.right = (800 - obs.x) + 'px';
+                
+                // Remove obstacles that are off screen
+                if (obs.x < -40) {
+                    obs.element.remove();
+                    obstacles.splice(i, 1);
+                    continue;
+                }
+                
+                // Check collision
+                if (checkCollision(obs)) {
+                    endGame();
+                }
+            }
+        }
+        
+        function checkCollision(obstacle) {
+            let playerRect = player.getBoundingClientRect();
+            let obsRect = obstacle.element.getBoundingClientRect();
+            
+            return !(playerRect.right < obsRect.left || 
+                     playerRect.left > obsRect.right || 
+                     playerRect.bottom < obsRect.top || 
+                     playerRect.top > obsRect.bottom);
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            clearInterval(obstacleInterval);
+            clearInterval(gameLoopInterval);
+            
+            player.textContent = '💀';
+            finalScoreDisplay.textContent = '🎮 Final Score: ' + Math.floor(score / 10);
+            gameOverScreen.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
